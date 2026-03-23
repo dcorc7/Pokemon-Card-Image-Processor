@@ -1,15 +1,20 @@
 import pytesseract
 import re
 from PIL import Image
+import sys
+import os
 
-from app.config import settings
-
-pytesseract.pytesseract.tesseract_cmd = settings.TESSERACT_PATH
 
 class OCRService:
 
     def __init__(self):
-        print("OCR service initialized.")
+        # Auto-detect tesseract path
+        if sys.platform.startswith("win"):
+            pytesseract.pytesseract.tesseract_cmd = os.getenv("TESSERACT_PATH", "C:/Program Files/Tesseract-OCR/tesseract.exe")
+        else:
+            # Linux / Hugging Face Spaces
+            pytesseract.pytesseract.tesseract_cmd = "/usr/bin/tesseract"
+        print(f"OCR service initialized. Using Tesseract at {pytesseract.pytesseract.tesseract_cmd}")
 
     def extract(self, image: Image.Image) -> dict:
         w, h = image.size

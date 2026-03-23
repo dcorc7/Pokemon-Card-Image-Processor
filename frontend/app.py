@@ -19,8 +19,6 @@ st.set_page_config(
     layout="wide"
 )
 
-BACKEND_URL = os.getenv("BACKEND_URL", "https://dcorcoran-Pokemon_Card_Image_Processor_API.hf.space")
-
 # --------------------------------
 # ----- HEADER -------------------
 # --------------------------------
@@ -34,9 +32,9 @@ st.caption("Upload a Pokémon card image to extract its data and find similar ca
 # ----- BACKEND STATUS -----------
 # --------------------------------
 
-if not health_check():
-    st.error("⚠️ Backend is not reachable. Make sure the FastAPI Space is running.")
-    st.stop()
+#if not health_check():
+#    st.error("⚠️ Backend is not reachable. Make sure the FastAPI Space is running.")
+#    st.stop()
 
 
 
@@ -48,7 +46,11 @@ uploaded_file = render_upload_section()
 
 if uploaded_file:
     image_bytes = uploaded_file.read()
+    print("Reading card...")
+
     image = Image.open(io.BytesIO(image_bytes))
+
+    print("Successfully uploaded card")
 
     col1, col2 = st.columns([1, 2])
 
@@ -60,8 +62,8 @@ if uploaded_file:
         with st.spinner("Analyzing card..."):
             result = predict(image_bytes, uploaded_file.name)
 
-        if "error" in result:
-            st.error(result["error"])
+        if "error_type" in result:
+            st.error(f"Error ({result['error_type']}): {result.get('backend_response') or result.get('exception')}")
         else:
             render_card_data(result)
 
