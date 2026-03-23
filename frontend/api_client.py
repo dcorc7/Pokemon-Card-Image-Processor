@@ -2,8 +2,7 @@ import requests
 import os
 
 #BACKEND_URL = "http://localhost:8000"
-BACKEND_URL = os.getenv("BACKEND_URL", "https://huggingface.co/spaces/dcorcoran/Pokemon_Card_Image_Processor_API")
-
+BACKEND_URL = os.getenv("BACKEND_URL", "https://dcorcoran-Pokemon_Card_Image_Processor_API.hf.space")
 
 def predict(image_bytes: bytes, filename: str) -> dict:
     try:
@@ -23,7 +22,7 @@ def predict(image_bytes: bytes, filename: str) -> dict:
 
 def health_check() -> bool:
     try:
-        response = requests.get(f"{BACKEND_URL}/health", timeout=3)
+        response = requests.get(f"{BACKEND_URL}/health", timeout = 3)
         return response.status_code == 200
     except:
         return False

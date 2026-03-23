@@ -1,6 +1,8 @@
 import streamlit as st
 from PIL import Image
 import io
+import requests
+import os
 
 from api_client import predict, health_check
 from components.upload_section import render_upload_section
@@ -17,7 +19,7 @@ st.set_page_config(
     layout="wide"
 )
 
-
+BACKEND_URL = os.getenv("BACKEND_URL", "https://dcorcoran-Pokemon_Card_Image_Processor_API.hf.space")
 
 # --------------------------------
 # ----- HEADER -------------------
@@ -33,7 +35,7 @@ st.caption("Upload a Pokémon card image to extract its data and find similar ca
 # --------------------------------
 
 if not health_check():
-    st.error("⚠️ Backend is not running. Start it with: uvicorn app.main:app --reload")
+    st.error("⚠️ Backend is not reachable. Make sure the FastAPI Space is running.")
     st.stop()
 
 
