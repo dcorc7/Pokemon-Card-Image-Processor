@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -50,9 +50,9 @@ def health():
 
 
 @app.post("/predict", response_model=CardResponse)
-async def predict(payload: ImagePayload):
+async def predict(file: UploadFile = File(...)):
     try:
-        image_bytes = base64.b64decode(payload.image_b64)  # <-- decode base64
+        image_bytes = await file.read()
         image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
 
         embedding = app.state.embedding_service.embed(image)
@@ -75,7 +75,7 @@ async def predict(payload: ImagePayload):
         return JSONResponse(status_code=500, content={"error": str(e)})
     
 @app.get("/cards")
-def get_cards(limit: int = 50):
+def get_cards(limit: int = 100):
     try:
         cards = app.state.similarity_service.get_all_cards(limit=limit)
         return cards

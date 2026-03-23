@@ -12,26 +12,15 @@ BACKEND_URL = os.getenv("BACKEND_URL", "https://dcorcoran-pokemon-card-image-pro
 
 
 def predict(image_bytes: bytes, filename: str) -> dict:
-    print("TOKEN VALUE:", os.getenv("HF_TOKEN"))
-    """Send image to backend /predict endpoint with detailed error info"""
     try:
-        encoded = base64.b64encode(image_bytes).decode("utf-8")
-        
         response = requests.post(
             f"{BACKEND_URL}/predict",
-            json={                        # JSON body, not multipart
-                "image_b64": encoded,
-                "filename": filename
-            },
-            headers={
-                "Content-Type": "application/json"
-            },
+            files={"file": (filename, image_bytes, "image/jpeg")},
             timeout=60
         )
         response.raise_for_status()
         return response.json()
     except requests.exceptions.HTTPError as http_err:
-        # Capture status code and backend response
         try:
             error_content = response.json()
         except Exception:
@@ -43,20 +32,11 @@ def predict(image_bytes: bytes, filename: str) -> dict:
             "exception": str(http_err)
         }
     except requests.exceptions.ConnectionError as conn_err:
-        return {
-            "error_type": "ConnectionError",
-            "exception": str(conn_err)
-        }
+        return {"error_type": "ConnectionError", "exception": str(conn_err)}
     except requests.exceptions.Timeout as timeout_err:
-        return {
-            "error_type": "Timeout",
-            "exception": str(timeout_err)
-        }
+        return {"error_type": "Timeout", "exception": str(timeout_err)}
     except Exception as e:
-        return {
-            "error_type": "Unexpected",
-            "exception": str(e)
-        }
+        return {"error_type": "Unexpected", "exception": str(e)}
 
 
 def health_check() -> bool:
@@ -68,7 +48,7 @@ def health_check() -> bool:
 
 
 @st.cache_data(ttl=300) 
-def get_all_cards(limit: int = 50) -> list:
+def get_all_cards(limit: int = 100) -> list:
     try:
         response = requests.get(f"{BACKEND_URL}/cards", params={"limit": limit}, timeout=10)
         response.raise_for_status()

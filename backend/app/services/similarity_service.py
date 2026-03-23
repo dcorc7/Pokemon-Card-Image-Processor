@@ -47,7 +47,7 @@ class SimilarityService:
 
         return results
     
-    def get_all_cards(self, limit: int = 50) -> list[dict]:
+    def get_all_cards(self, limit: int = 100) -> list[dict]:
         # Check if metadat is a dictionary
         if isinstance(self.metadata, dict):
             # Return metadata values
