@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -9,9 +9,9 @@ import io
 from app.services.embedding_service import EmbeddingService
 from app.services.similarity_service import SimilarityService
 from app.services.ocr_service import OCRService
-from app.schemas import CardResponse
+from app.schemas import CardResponse, ImagePayload
 
-import requests
+import base64
 
 
 # ---------------
@@ -50,14 +50,13 @@ def health():
 
 
 @app.post("/predict", response_model=CardResponse)
-async def predict(file: UploadFile = File(...)):
+async def predict(payload: ImagePayload):
     try:
-        image_bytes = await file.read()
+        image_bytes = base64.b64decode(payload.image_b64)  # <-- decode base64
         image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
 
         embedding = app.state.embedding_service.embed(image)
         similar_cards = app.state.similarity_service.search(embedding, top_k=5)
-
         ocr_data = app.state.ocr_service.extract(image)
 
         if similar_cards and similar_cards[0]["score"] > 0.99:
@@ -72,6 +71,14 @@ async def predict(file: UploadFile = File(...)):
             moves=ocr_data.get("moves"),
             similar_cards=similar_cards
         )
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+    
+@app.get("/cards")
+def get_cards(limit: int = 50):
+    try:
+        cards = app.state.similarity_service.get_all_cards(limit=limit)
+        return cards
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 

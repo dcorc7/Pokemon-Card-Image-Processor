@@ -1,19 +1,33 @@
 import requests
 import os
 import requests
+import base64
+import streamlit as st
 
 #BACKEND_URL = "http://localhost:8000"
 BACKEND_URL = os.getenv("BACKEND_URL", "https://dcorcoran-pokemon-card-image-processor-api.hf.space")
 
+
+#headers = {"Authorization": f"Bearer {os.getenv('HF_TOKEN')}"}
+
+
 def predict(image_bytes: bytes, filename: str) -> dict:
+    print("TOKEN VALUE:", os.getenv("HF_TOKEN"))
     """Send image to backend /predict endpoint with detailed error info"""
     try:
+        encoded = base64.b64encode(image_bytes).decode("utf-8")
+        
         response = requests.post(
             f"{BACKEND_URL}/predict",
-            files={"file": (filename, image_bytes, "image/png")},
+            json={                        # JSON body, not multipart
+                "image_b64": encoded,
+                "filename": filename
+            },
+            headers={
+                "Content-Type": "application/json"
+            },
             timeout=60
         )
-        # Raise HTTPError for 4xx/5xx responses
         response.raise_for_status()
         return response.json()
     except requests.exceptions.HTTPError as http_err:
@@ -52,3 +66,12 @@ def health_check() -> bool:
     except:
         return False
 
+
+@st.cache_data(ttl=300) 
+def get_all_cards(limit: int = 50) -> list:
+    try:
+        response = requests.get(f"{BACKEND_URL}/cards", params={"limit": limit}, timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        raise  

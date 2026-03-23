@@ -46,3 +46,12 @@ class SimilarityService:
             })
 
         return results
+    
+    def get_all_cards(self, limit: int = 50) -> list[dict]:
+        # Check if metadat is a dictionary
+        if isinstance(self.metadata, dict):
+            # Return metadata values
+            return list(self.metadata.values())[:limit]
+        
+    # Return metadata if it is a list
+        return self.metadata[:limit]

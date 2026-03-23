@@ -37,3 +37,12 @@ class CardResponse(BaseModel):
     types: Optional[list[str]] = None
     moves: Optional[list[Move]] = None
     similar_cards: list[SimilarCard] = []
+
+
+# --------------------------------
+# ----- IMAGE PAYLOAD ------------
+# --------------------------------
+
+class ImagePayload(BaseModel):
+    image_b64: str
+    filename: str
