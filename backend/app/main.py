@@ -9,7 +9,7 @@ import io
 from app.services.embedding_service import EmbeddingService
 from app.services.similarity_service import SimilarityService
 from app.services.ocr_service import OCRService
-from app.schemas import CardResponse, ImagePayload
+from app.schemas import CardResponse
 
 import base64
 
