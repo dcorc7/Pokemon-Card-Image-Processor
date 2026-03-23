@@ -6,6 +6,9 @@ import requests
 # Function to collect Pokemon cards from pokemontcgsdk API
 def get_cards(output_path="./data_collection/metadata.json"):
     all_cards = []
+
+    # tracks (name, rarity) pairs
+    seen = set() 
     
     # Option to collect every card
     #cards = Card.all()
@@ -19,6 +22,17 @@ def get_cards(output_path="./data_collection/metadata.json"):
     
     # Loop through every card to collect/store relevant information in json file
     for card in cards:
+        # Skip if we've already added a card with this name and rarity
+        key = (card.name, getattr(card, "rarity", None))
+        
+        if key in seen:
+            print(f"Skipping duplicate: {card.name} ({card.id})")
+            continue
+
+        # Add new card to the seen set
+        seen.add(key)
+
+        # Collect card data
         card_data = {
             "id": card.id,
             "name": card.name,

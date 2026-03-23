@@ -3,7 +3,7 @@ import os
 import requests
 
 def download_images(metadata_path="backend/app/index/metadata.json", output_dir="./data_collection/images"):
-    #Mka ethe iamges folder
+    #Make the images folder
     os.makedirs(output_dir, exist_ok=True)
 
     # Load the metadat.json file

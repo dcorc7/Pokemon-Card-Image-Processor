@@ -140,4 +140,5 @@ build_index()
 STEPS TO RUN:
 
 python ./data_collection/build_faiss_index.py
+
 """
