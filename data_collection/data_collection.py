@@ -4,7 +4,7 @@ import os
 import requests
 
 # Function to collect Pokemon cards from pokemontcgsdk API
-def get_cards(output_path="./backend/app/index/metadata.json"):
+def get_cards(output_path="./data_collection/metadata.json"):
     all_cards = []
     
     # Option to collect every card
