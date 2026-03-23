@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+pillow
+numpy
+torch
+torchvision
+faiss-cpu
+pytesseract
+opencv-python
+pydantic
+pydantic-settings
+python-multipart
+requests
