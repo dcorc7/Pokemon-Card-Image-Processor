@@ -4,7 +4,7 @@ import io
 import requests
 import os
 
-from api_client import predict, health_check, get_all_cards
+from api_client import predict, health_check, get_all_cards, visualize_regions
 from components.upload_section import render_upload_section
 from components.display_structured_data import render_card_data
 from components.similarity_grid import render_similarity_grid
@@ -42,7 +42,7 @@ if not health_check():
 # ----- UPLOAD -------------------
 # --------------------------------
 
-tab1, tab2 = st.tabs(["Upload Pokemon Card", "Card Database"])
+tab1, tab2, tab3 = st.tabs(["Upload Pokemon Card", "Card Database", "OCR Card Visualizer"])
 
 
 with tab1:
@@ -62,7 +62,7 @@ with tab1:
 
         with col2:
             with st.spinner("Analyzing card..."):
-                result = predict(image_bytes, uploaded_file.name)
+                result = predict(image_bytes, uploaded_file.name) 
 
             # Check if there was an error in the predict endpoint
             if "error_type" in result:
@@ -108,3 +108,40 @@ with tab2:
                     st.caption(card.get("name", "Unknown"))
     else:
         st.info("No cards to display.")
+
+with tab3:
+    # Tab header and description
+    st.header("OCR Region Visualizer")
+    st.caption("Upload a card to see exactly which regions the OCR is scanning.")
+
+    # Reuse the shared upload component to accept a card image
+    vis_file = render_upload_section()
+
+    if vis_file:
+        # Read the uploaded file bytes and decode into a Pillow Image for local display
+        image_bytes = vis_file.read()
+        image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+
+        # Split the view into two side-by-side columns: original vs. annotated
+        col1, col2 = st.columns(2)
+
+        # Display the unmodified card image on the left
+        with col1:
+            st.subheader("Original")
+            st.image(image, use_container_width=True)
+
+        # Display the modified card image on the right
+        with col2:
+            st.subheader("OCR Regions")
+            annotated = visualize_regions(image_bytes, vis_file.name)
+            if annotated:
+                st.image(annotated, use_container_width=True)
+
+        st.divider()
+
+        # Color legend mapping each box color to its corresponding OCR region
+        st.markdown("**Legend**")
+        cols = st.columns(3)
+        cols[0].markdown("🔴 **Name**")
+        cols[1].markdown("🔵 **HP**")
+        cols[2].markdown("🟢 **Moves**")

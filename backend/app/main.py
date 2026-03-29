@@ -1,6 +1,6 @@
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from contextlib import asynccontextmanager
 from PIL import Image
@@ -35,6 +35,7 @@ app.add_middleware(
 # ----- ROUTES -------
 # --------------------
 
+# Actions done on app startup
 @app.on_event("startup")
 async def startup_event():
     """Load models and indexes at startup."""
@@ -44,11 +45,13 @@ async def startup_event():
     print("Models and indexes loaded successfully.")
 
 
+# Endpoint to signify API health
 @app.get("/health")
 def health():
     return {"status": "ok"}
 
 
+# Endpoint to extract information from pokemon cards
 @app.post("/predict", response_model=CardResponse)
 async def predict(file: UploadFile = File(...)):
     try:
@@ -74,6 +77,8 @@ async def predict(file: UploadFile = File(...)):
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
     
+
+# Endpoint to display a sample of cards in the database
 @app.get("/cards")
 def get_cards(limit: int = 100):
     try:
@@ -81,8 +86,49 @@ def get_cards(limit: int = 100):
         return cards
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
+    
+
+# Endpoint to display the original card and its OCR cropped boxes
+@app.post("/visualize")
+async def visualize(file: UploadFile = File(...)):
+    try:
+        # Read the raw bytes from the uploaded file
+        image_bytes = await file.read()
+
+        # Decode bytes into a Pillow Image and normalize to RGB color space
+        image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+
+        # Delegate to OCRService to draw colored bounding boxes over each crop region
+        annotated = app.state.ocr_service.visualize_regions(image)
+
+        # Write the annotated image into an in-memory buffer as PNG
+        buf = io.BytesIO()
+        annotated.save(buf, format="PNG")
+        
+        # Reset buffer position to the start before streaming
+        buf.seek(0)  
+
+        # Stream the PNG bytes directly back to the client
+        return StreamingResponse(buf, media_type="image/png")
+
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
 
 import uvicorn
 
 if __name__ == "__main__":
     uvicorn.run("app.main:app", host="0.0.0.0", port=7860)
+
+
+
+"""
+ENDPOINT LOCATIONS:
+https://dcorcoran-pokemon-card-image-processor-api.hf.space/docs
+https://dcorcoran-pokemon-card-image-processor-api.hf.space/health
+https://dcorcoran-pokemon-card-image-processor-api.hf.space/predict
+https://dcorcoran-pokemon-card-image-processor-api.hf.space/cards
+https://dcorcoran-pokemon-card-image-processor-api.hf.space/visualize
+
+"""

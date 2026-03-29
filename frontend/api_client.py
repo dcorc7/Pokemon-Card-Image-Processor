@@ -3,6 +3,8 @@ import os
 import requests
 import base64
 import streamlit as st
+import io
+from PIL import Image
 
 #BACKEND_URL = "http://localhost:8000"
 BACKEND_URL = os.getenv("BACKEND_URL", "https://dcorcoran-pokemon-card-image-processor-api.hf.space")
@@ -55,3 +57,29 @@ def get_all_cards(limit: int = 100) -> list:
         return response.json()
     except Exception as e:
         raise  
+
+
+def visualize_regions(image_bytes: bytes, filename: str) -> Image.Image | None:
+    try:
+        response = requests.post(
+            f"{BACKEND_URL}/visualize",
+            files={"file": (filename, image_bytes, "image/jpeg")},
+            timeout=30
+        )
+        response.raise_for_status()
+
+        # Decode the returned PNG bytes into a Pillow Image
+        return Image.open(io.BytesIO(response.content))
+
+    except requests.exceptions.HTTPError as http_err:
+        st.error(f"Visualization failed (HTTP {response.status_code}): {http_err}")
+        return None
+    except requests.exceptions.ConnectionError as conn_err:
+        st.error(f"Connection error during visualization: {conn_err}")
+        return None
+    except requests.exceptions.Timeout:
+        st.error("Visualization request timed out.")
+        return None
+    except Exception as e:
+        st.error(f"Unexpected error during visualization: {e}")
+        return None
