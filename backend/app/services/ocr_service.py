@@ -35,17 +35,46 @@ class OCRService:
         region = region.point(lambda x: 0 if x < 140 else 255, "1").convert("L")
 
         return region
+    
+
+    # Function to check top-left corner for 'STAGE' text indicating an evolved Pokémon.
+    def _is_evolved(self, image: Image.Image) -> bool:
+        # Get size of the image
+        w, h = image.size
+
+        # Crop to the top left of the card
+        top_left = image.crop((0, 0, 0.35 * w, 0.12 * h))
+
+        # Preprocesss the cropped region
+        top_left = self._preprocess(top_left, scale=3)
+
+        # Uses PSM 6 (block of text mode)
+        text = pytesseract.image_to_string(top_left, config="--psm 6 --oem 3")
+
+        # Return boolean value depending on if the words STAGE1 or STAGE 2 appear
+        return bool(re.search(r'stage\s*[12]', text, re.IGNORECASE))
+
 
     # Fuction to return all wanted card field texts
     def extract(self, image: Image.Image) -> dict:
         # Initialize width and height of image
         w, h = image.size
 
+        # Detect whether this is an evolved card (Stage 1 or Stage 2)
+        evolved = self._is_evolved(image)
+
         # Name field — skip "Basic Pokemon" line at very top, just grab name row
-        name_region = image.crop((0.05 * w, 0.06 * h, 0.72 * w, 0.13 * h))
+        # Evolved cards have an evolution picture in the top-left (~0–25% width), so the name starts further right. Basic cards start near the left edge.
+        if evolved:
+            name_region = image.crop((0.28 * w, 0.06 * h, 0.72 * w, 0.13 * h))
+        else:
+            name_region = image.crop((0.05 * w, 0.06 * h, 0.72 * w, 0.13 * h))
 
         # HP field — top right, large number + "HP" text
         hp_region = image.crop((0.55 * w, 0.04 * h, 0.97 * w, 0.13 * h))
+
+        # Length/Weight —  bar sits just above the moves section
+        length_weight_region = image.crop((0.05 * w, 0.52 * h, 0.95 * w, 0.58 * h))
 
         # Moves field — middle to lower section
         moves_region = image.crop((0.02 * w, 0.52 * h, 0.98 * w, 0.88 * h))
@@ -59,7 +88,11 @@ class OCRService:
             "hp": self._extract_hp(hp_region),
             "types": self._extract_types(full_text),
             "moves": self._extract_moves(moves_region),
+            "length": self._extract_length(length_weight_region),
+            "weight": self._extract_weight(length_weight_region),
+            "is_evolved": self._is_evolved(image)
         }
+
 
     # Function to get pokemon name
     def _extract_name(self, region: Image.Image) -> str | None:
@@ -79,6 +112,7 @@ class OCRService:
                 return line
             
         return text if text else None
+
 
     # Function to get pokemon hp
     def _extract_hp(self, region: Image.Image) -> str | None:
@@ -100,6 +134,7 @@ class OCRService:
 
         return match.group(1) if match else None
 
+
     # Function to get pokemon types
     def _extract_types(self, text: str) -> list[str] | None:
         # All pokemon types for keywrods extraction
@@ -112,6 +147,37 @@ class OCRService:
         # Checks whether any known Pokémon type name appears anywhere in the OCR output
         found = [t for t in types if t.lower() in text.lower()]
         return found if found else None
+
+
+    # Extract length
+    def _extract_length(self, region: Image.Image) -> str | None:
+        # Preprocess the length region
+        region = self._preprocess(region, scale=3)
+
+        # Uses PSM 6 (block of text mode)
+        text = pytesseract.image_to_string(region, config="--psm 6 --oem 3")
+
+        # Find length match through regex patterns (after Length)
+        match = re.search(r"Length[:\s]+([0-9]+'\s*[0-9]+\")", text, re.IGNORECASE)
+
+        # Return a match or None
+        return match.group(1).strip() if match else None
+
+
+    # Extract weight
+    def _extract_weight(self, region: Image.Image) -> str | None:
+        # Preprocess the width region
+        region = self._preprocess(region, scale=3)
+
+        # Uses PSM 6 (block of text mode)
+        text = pytesseract.image_to_string(region, config="--psm 6 --oem 3")
+
+        # Find weight match through regex patterns (bewteen Weight and lbs)
+        match = re.search(r"Weight[:\s]+([\d.]+\s*lbs?\.?)", text, re.IGNORECASE)
+
+        # Return a match or None
+        return match.group(1).strip() if match else None
+    
 
     # Function to get pokemon moves
     def _extract_moves(self, region: Image.Image) -> list[dict] | None:
@@ -166,18 +232,23 @@ class OCRService:
         from PIL import ImageDraw, ImageFont
         
         w, h = image.size
+        evolved = self._is_evolved(image)
         vis = image.copy()
         draw = ImageDraw.Draw(vis)
 
         regions = {
-            "Name":  (0.05 * w, 0.06 * h, 0.72 * w, 0.13 * h),
-            "HP":    (0.55 * w, 0.04 * h, 0.97 * w, 0.13 * h),
-            "Moves": (0.02 * w, 0.52 * h, 0.98 * w, 0.88 * h),
+            "Name":          (0.28 * w if evolved else 0.05 * w, 0.06 * h, 0.72 * w, 0.13 * h),
+            "HP":            (0.55 * w, 0.04 * h, 0.97 * w, 0.13 * h),
+            "Length/Weight": (0.05 * w, 0.52 * h, 0.95 * w, 0.58 * h),
+            "Moves":         (0.02 * w, 0.57 * h, 0.98 * w, 0.88 * h),
+            "is_evolved":    (0, 0, 0.35 * w, 0.12 * h)
         }
         colors = {
-            "Name":  "red",
-            "HP":    "blue",
-            "Moves": "green",
+            "Name":          "red",
+            "HP":            "blue",
+            "Length/Weight": "orange",
+            "Moves":         "green",
+            "Is Evolved":    "black"
         }
 
         for label, box in regions.items():

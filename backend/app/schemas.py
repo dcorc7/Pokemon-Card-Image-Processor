@@ -36,4 +36,7 @@ class CardResponse(BaseModel):
     hp: Optional[str] = None
     types: Optional[list[str]] = None
     moves: Optional[list[Move]] = None
+    length: Optional[str] = None
+    weight: Optional[str] = None
+    is_evolved: Optional[bool] = None
     similar_cards: list[SimilarCard] = []

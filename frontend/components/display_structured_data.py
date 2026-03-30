@@ -10,12 +10,21 @@ def render_card_data(result: dict):
     # Column one filled with name and HP
     with col1:
         st.metric("Name", result.get("name") or "Not detected")
+
         st.metric("HP", result.get("hp") or "Not detected")
+
+        st.metric("Evolved", result.get("is_evolved") or "Not detected")
 
     # Column two filled with Pokemon types
     with col2:
         types = result.get("types")
         st.metric("Types", ", ".join(types) if types else "Not detected")
+
+        st.metric("Length", result.get("length") or "Not detected")
+
+        st.metric("Weight", result.get("weight") or "Not detected")
+
+
 
     # Display moves below above columns
     moves = result.get("moves")

@@ -46,7 +46,7 @@ tab1, tab2, tab3 = st.tabs(["Upload Pokemon Card", "Card Database", "OCR Card Vi
 
 
 with tab1:
-    uploaded_file = render_upload_section()
+    uploaded_file = render_upload_section(key="upload_tab1")
 
     # Check if file was uploaded
     if uploaded_file:
@@ -115,7 +115,7 @@ with tab3:
     st.caption("Upload a card to see exactly which regions the OCR is scanning.")
 
     # Reuse the shared upload component to accept a card image
-    vis_file = render_upload_section()
+    vis_file = render_upload_section(key="upload_tab3")
 
     if vis_file:
         # Read the uploaded file bytes and decode into a Pillow Image for local display
@@ -128,14 +128,14 @@ with tab3:
         # Display the unmodified card image on the left
         with col1:
             st.subheader("Original")
-            st.image(image, use_container_width=True)
+            st.image(image, width="content")
 
         # Display the modified card image on the right
         with col2:
             st.subheader("OCR Regions")
             annotated = visualize_regions(image_bytes, vis_file.name)
             if annotated:
-                st.image(annotated, use_container_width=True)
+                st.image(annotated, width="content")
 
         st.divider()
 

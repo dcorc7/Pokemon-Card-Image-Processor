@@ -72,6 +72,9 @@ async def predict(file: UploadFile = File(...)):
             hp=ocr_data.get("hp"),
             types=ocr_data.get("types"),
             moves=ocr_data.get("moves"),
+            length=ocr_data.get("length"),
+            weight=ocr_data.get("weight"),
+            is_evolved=ocr_data.get("is_evolved"),
             similar_cards=similar_cards
         )
     except Exception as e:
