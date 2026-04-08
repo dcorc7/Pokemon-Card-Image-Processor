@@ -46,6 +46,9 @@ tab1, tab2, tab3 = st.tabs(["Upload Pokemon Card", "Card Database", "OCR Card Vi
 
 
 with tab1:
+    st.header("Card Optical Character Recognition (OCR)")
+    st.caption("Upload a Pokémon card image.")
+
     uploaded_file = render_upload_section(key="upload_tab1")
 
     # Check if file was uploaded
@@ -83,7 +86,7 @@ with tab1:
 
 with tab2: 
     st.header("Card Database")
-    st.subheader("Showing a sample of available cards in the database.")
+    st.caption("Showing a sample of available cards in the database.")
 
     with st.spinner("Loading cards..."):
         try:
@@ -138,10 +141,3 @@ with tab3:
                 st.image(annotated, width="content")
 
         st.divider()
-
-        # Color legend mapping each box color to its corresponding OCR region
-        st.markdown("**Legend**")
-        cols = st.columns(3)
-        cols[0].markdown("🔴 **Name**")
-        cols[1].markdown("🔵 **HP**")
-        cols[2].markdown("🟢 **Moves**")

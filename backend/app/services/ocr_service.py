@@ -43,16 +43,28 @@ class OCRService:
         w, h = image.size
 
         # Crop to the top left of the card
-        top_left = image.crop((0, 0, 0.35 * w, 0.12 * h))
+        top_left = image.crop((0.07 * w, 0.04 * h, 0.19 * w, 0.07 * h))
 
         # Preprocesss the cropped region
         top_left = self._preprocess(top_left, scale=3)
 
         # Uses PSM 6 (block of text mode)
         text = pytesseract.image_to_string(top_left, config="--psm 6 --oem 3")
+        print("IS_EVOLVED OCR RAW:", repr(text))
 
-        # Return boolean value depending on if the words STAGE1 or STAGE 2 appear
-        return bool(re.search(r'stage\s*[12]', text, re.IGNORECASE))
+        if re.search(r'stage[\s.\-_]*[12|I]', text, re.IGNORECASE):
+            return True
+
+        # Fallback: check for "Evolves from" text which only appears on evolved cards
+        evolved_region = image.crop((0, 0.02 * h, 0.80 * w, 0.07 * h))
+        evolved_region = self._preprocess(evolved_region, scale=3)
+        evolved_text = pytesseract.image_to_string(evolved_region, config="--psm 6 --oem 3")
+        print("EVOLVES_FROM OCR RAW:", repr(evolved_text))  # remove once working
+
+        if re.search(r'evolves\s+from', evolved_text, re.IGNORECASE):
+            return True
+
+        return False
 
 
     # Fuction to return all wanted card field texts
@@ -66,15 +78,15 @@ class OCRService:
         # Name field — skip "Basic Pokemon" line at very top, just grab name row
         # Evolved cards have an evolution picture in the top-left (~0–25% width), so the name starts further right. Basic cards start near the left edge.
         if evolved:
-            name_region = image.crop((0.28 * w, 0.06 * h, 0.72 * w, 0.13 * h))
+            name_region = image.crop((0.23 * w, 0.06 * h, 0.62 * w, 0.11 * h))
         else:
-            name_region = image.crop((0.05 * w, 0.06 * h, 0.72 * w, 0.13 * h))
+            name_region = image.crop((0.07 * w, 0.06 * h, 0.62 * w, 0.11 * h))
 
         # HP field — top right, large number + "HP" text
-        hp_region = image.crop((0.55 * w, 0.04 * h, 0.97 * w, 0.13 * h))
+        hp_region = image.crop((0.64 * w, 0.06 * h, 0.85 * w, 0.11 * h))
 
         # Length/Weight —  bar sits just above the moves section
-        length_weight_region = image.crop((0.05 * w, 0.52 * h, 0.95 * w, 0.58 * h))
+        length_weight_region = image.crop((0.125 * w, 0.53 * h, 0.86 * w, 0.57 * h))
 
         # Moves field — middle to lower section
         moves_region = image.crop((0.02 * w, 0.52 * h, 0.98 * w, 0.88 * h))
@@ -90,7 +102,7 @@ class OCRService:
             "moves": self._extract_moves(moves_region),
             "length": self._extract_length(length_weight_region),
             "weight": self._extract_weight(length_weight_region),
-            "is_evolved": self._is_evolved(image)
+            "is_evolved": evolved
         }
 
 
@@ -166,17 +178,29 @@ class OCRService:
 
     # Extract weight
     def _extract_weight(self, region: Image.Image) -> str | None:
-        # Preprocess the width region
+        # Preprocess the weight region
         region = self._preprocess(region, scale=3)
 
         # Uses PSM 6 (block of text mode)
         text = pytesseract.image_to_string(region, config="--psm 6 --oem 3")
+        print("WEIGHT OCR RAW:", repr(text))
 
-        # Find weight match through regex patterns (bewteen Weight and lbs)
-        match = re.search(r"Weight[:\s]+([\d.]+\s*lbs?\.?)", text, re.IGNORECASE)
+        # Primary: match "Weight: 76." with flexible spacing/punctuation
+        match = re.search(r"Weight[:\s]+([\d.]+)", text, re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
 
-        # Return a match or None
-        return match.group(1).strip() if match else None
+        # Fallback 1: find a number followed by lbs anywhere in the line
+        match = re.search(r"([\d.]+)\s*lbs?\.?", text, re.IGNORECASE)
+        if match:
+            return match.group(1).strip() + " lbs"
+
+        # Fallback 2: OCR sometimes reads "lbs" as "Ibs" (capital i) or "1bs"
+        match = re.search(r"([\d.]+)\s*[Il1]bs?\.?", text)
+        if match:
+            return match.group(1).strip() + " lbs"
+
+        return None
     
 
     # Function to get pokemon moves
@@ -237,18 +261,20 @@ class OCRService:
         draw = ImageDraw.Draw(vis)
 
         regions = {
-            "Name":          (0.28 * w if evolved else 0.05 * w, 0.06 * h, 0.72 * w, 0.13 * h),
-            "HP":            (0.55 * w, 0.04 * h, 0.97 * w, 0.13 * h),
-            "Length/Weight": (0.05 * w, 0.52 * h, 0.95 * w, 0.58 * h),
-            "Moves":         (0.02 * w, 0.57 * h, 0.98 * w, 0.88 * h),
-            "is_evolved":    (0, 0, 0.35 * w, 0.12 * h)
+            "Name":           (0.23 * w if evolved else 0.07 * w, 0.06 * h, 0.62 * w, 0.11 * h),
+            "HP":             (0.64 * w, 0.06 * h, 0.85 * w, 0.11 * h),
+            "Length/Weight":  (0.125 * w, 0.53 * h, 0.86 * w, 0.57 * h),
+            "Moves":          (0.02 * w, 0.57 * h, 0.98 * w, 0.88 * h),
+            "is_evolved":     (0.07 * w, 0.04 * h, 0.19 * w, 0.07 * h),
+            "evolves_from": (0, 0.02 * h, 0.80 * w, 0.07 * h)
         }
         colors = {
             "Name":          "red",
             "HP":            "blue",
             "Length/Weight": "orange",
             "Moves":         "green",
-            "Is Evolved":    "black"
+            "is_evolved":    "black",
+            "evolves_from":  "white"
         }
 
         for label, box in regions.items():
